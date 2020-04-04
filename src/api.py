@@ -5,7 +5,7 @@ from argparse import (
     ArgumentParser,
 )
 from datetime import datetime
-
+import pandas as pd
 from pandas import DataFrame
 from flask import Flask, request, jsonify, render_template
 from penn_chime.constants import CHANGE_DATE
@@ -190,7 +190,18 @@ def results():
             (m.census_df, "projected_census"),
         ):
             df.to_csv(f"{data.current_date}_{name}.csv")
-    return jsonify(df.iloc[-1].to_json())
+    df = m.admits_df
+    df1 = m.census_df
+    df = df[df.day>0][df.day<8]
+    df1 = df1[df1.day>0][df1.day<8]
+    df = df.reset_index(drop=True)
+    df1 = df1.reset_index(drop=True)
+    df = df.rename({'hospitalized': 'hospitalized_new', 'icu': 'icu_new', 'ventilated': 'ventilated_new'}, axis=1)
+    df1 = df1.rename({'hospitalized': 'hospitalized_total', 'icu': 'icu_total', 'ventilated': 'ventilated_total'}, axis=1)
+    df = df.merge(df1.drop(['day'], axis=1), on='date')
+    df.date = pd.to_datetime(df.date)
+    df.date = df.date.dt.strftime('%Y-%m-%d')
+    return df.to_json(orient='records')
 
 if __name__ == "__main__":
     app.run(debug=True)
